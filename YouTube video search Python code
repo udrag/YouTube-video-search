@@ -1,0 +1,124 @@
+# Import libraries
+import pandas as pd
+import requests
+from datetime import datetime as dt
+
+# Import Google libraries
+import google_auth_oauthlib.flow
+import googleapiclient.errors
+from googleapiclient.discovery import build
+
+# Get YouTube API credentials
+api_key = 'YOUR API CODE'
+youtube = build('youtube', 'v3', developerKey=api_key)
+
+# Extract the list of language code from Wikipedia 
+
+## getting the data ready for the web sscraping
+url = 'https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes'
+response = requests.get(url)
+page_content = response.text
+soup = BeautifulSoup(page_content, 'html.parser')
+
+lang_list = [] # this will be the final list of codes
+
+# looping through the wiki page
+for i in range(0, 1096, 6):
+    try:
+        base = soup.find_all('td')[i]
+        lists = base['id'] + ' - ' + base.find('a').string
+        
+        lang_list.append(lists)
+    except:
+        print(f'Error encountered at line {i}.')
+        
+def youtube_video_search():
+    """
+    This function generates a method that will help search videos.
+    The values of search term, language code, region code and number of results are obtained via input functions.
+    In the input langauge and region code fields write 'list' to get the list of all the language/region codes.
+    """
+    # Create an API client for the region codes
+    region_list = youtube.i18nRegions().list(part="snippet")
+    response = region_list.execute()
+    
+    # Create an API client for the term of search
+    print('What would you like to search on YouTube?')
+    search_term = str(input())    
+
+    # User input for the REGION code
+    print('Enter the region code, otherwise enter "list" to see the region codes.')
+    region_code = str(input()).upper()
+    matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
+    
+    if region_code == 'LIST':
+        for i in range(len(response['items'])):
+            print(response['items'][i]['snippet']['gl'] + ' ' + '-' + ' ' + response['items'][i]['snippet']['name'])
+        print('Enter the 2 letters of the region code:')
+        region_code = str(input()).upper()
+        matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
+    
+    # Conditional statement for misspelled words
+    while matches == 'False':
+        print(f'{region_code} is not a valid region code. Please enter the 2 letters of the region code. If you would like to see the whole list of region codes, please enter \'list\'')
+        region_code = str(input()).upper()
+        matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
+        if region_code == 'LIST': # Conditional statement for the region codes list inside the while loop
+            for i in range(len(response['items'])):
+                print(response['items'][i]['snippet']['gl'] + ' ' + '-' + ' ' + response['items'][i]['snippet']['name'])
+            print('Enter the 2 letters of the region code:')
+            region_code = str(input()).upper()
+            matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
+    
+    # User input for the LANGUAGE code
+    print('Enter the 2 letters of the language ISO code. To see the list of language codes, please enter "list"')
+    lang_code = str(input()).lower()
+    matches = str(bool([item for item in lang_list if(item[:2] == lang_code)]))
+    
+    if lang_code == 'list':
+        print(lang_list)
+        print('Enter the 2 letters of the language code:')
+        lang_code = str(input()).lower()
+        matches = str(bool([item for item in lang_list if(item[:2] == lang_code)]))
+    
+    # Conditional statement for misspelled words
+    while matches == 'False':
+        print(f'{lang_code} is not a valid language code. Please enter the correct code. To see the list of language codes, please enter \'list\'')
+        lang_code = str(input()).lower()
+        matches = str(bool([item for item in lang_list if(item[:2] == lang_code)]))
+        if lang_code == 'list': # Conditional statement for the language codes list inside the while loop
+            print(lang_list)
+            print('Enter the 2 letters of the language code:')
+            lang_code = str(input()).lower()
+            matches = str(bool([item for item in lang_list if(item[:2] == lang_code)]))
+    
+    # User input for the number of results
+    print('Enter the number of videos you would like to see (max 50).')
+    number = int(input())
+    
+    # API request parameters
+    search_response = youtube.search().list(
+                        part = 'id,snippet',
+                        type = 'video',
+                        q = search_term,
+                        regionCode = region_code,
+                        relevanceLanguage = lang_code,
+                        maxResults = number)
+    response = search_response.execute() 
+    
+    # Create a list and add the API results
+    all_data = []
+    for i in range(len(response['items'])):
+        try:
+            data = dict(requested_region = region_code,
+                        requested_language = lang_code,
+                        title = response['items'][i]['snippet']['title'],
+                        published_date = dt.strptime(response['items'][i]['snippet']['publishedAt'], "%Y-%m-%dT%H:%M:%SZ"),
+                        video_url = 'https://www.youtube.com/watch?v='+str(response['items'][i]['id']['videoId']))
+            all_data.append(data)
+            
+        except KeyError:
+            print('A KeyError %d occurred:\n%s') # For rare occasions when not all the statistcs are present
+
+        
+    return pd.DataFrame(all_data)

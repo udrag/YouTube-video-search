@@ -13,16 +13,15 @@ api_key = 'YOUR API CODE'
 youtube = build('youtube', 'v3', developerKey=api_key)
 
 # Extract the list of language code from Wikipedia 
-
-## getting the data ready for the web sscraping
+## getting the data ready for the web scraping
 url = 'https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes'
 response = requests.get(url)
 page_content = response.text
 soup = BeautifulSoup(page_content, 'html.parser')
 
-lang_list = [] # this will be the final list of codes
+lang_list = [] # this will be the final list of language codes
 
-# looping through the wiki page
+# looping through the Wikipedia page to get the list of two letters language codes
 for i in range(0, 1096, 6):
     try:
         base = soup.find_all('td')[i]
@@ -34,7 +33,7 @@ for i in range(0, 1096, 6):
         
 def youtube_video_search():
     """
-    This function generates a method that will help search videos.
+    This function generates a method that will help search videos on YouTube by search term, language code, region code abd the number of results.
     The values of search term, language code, region code and number of results are obtained via input functions.
     In the input langauge and region code fields write 'list' to get the list of all the language/region codes.
     """
@@ -50,10 +49,13 @@ def youtube_video_search():
     print('Enter the region code, otherwise enter "list" to see the region codes.')
     region_code = str(input()).upper()
     matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
+    region_code_list = []
     
     if region_code == 'LIST':
         for i in range(len(response['items'])):
-            print(response['items'][i]['snippet']['gl'] + ' ' + '-' + ' ' + response['items'][i]['snippet']['name'])
+            region_code_list.append(response['items'][i]['snippet']['gl'] + ' ' + '-' + ' ' + response['items'][i]['snippet']['name'])
+        region_code_list.sort()
+        print(region_code_list)
         print('Enter the 2 letters of the region code:')
         region_code = str(input()).upper()
         matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
@@ -65,7 +67,11 @@ def youtube_video_search():
         matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
         if region_code == 'LIST': # Conditional statement for the region codes list inside the while loop
             for i in range(len(response['items'])):
-                print(response['items'][i]['snippet']['gl'] + ' ' + '-' + ' ' + response['items'][i]['snippet']['name'])
+                region_code_list.append(response['items'][i]['snippet']['gl'] + ' ' + '-' + ' ' + response['items'][i]['snippet']['name'])
+            
+            region_code_list.sort()
+            print(region_code_list)
+            
             print('Enter the 2 letters of the region code:')
             region_code = str(input()).upper()
             matches = str(bool([item for item in response['items'] if(item["id"] == region_code)]))
